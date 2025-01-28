@@ -1,26 +1,69 @@
 import React, { useState } from "react";
 import { data, Link, useNavigate } from "react-router-dom";
-
+import Alert from "@mui/material/Alert";
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-
+  const [message, setMessage] = useState("");
+  const [openAlert, setOpenAlert] = useState(false);
   const handleChange = (e) => {
+    setOpenAlert(false);
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log(formData);
-    navigate("/dashboard");
+    fetch("http://127.0.0.1:8000/login", {
+      method: "POST", // Specify the method
+      headers: {
+        "Content-Type": "application/json", // Set the content type to JSON
+      },
+      body: JSON.stringify(formData), // Convert JavaScript object to JSON string
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json(); // Parse the JSON response if successful
+        } else {
+          throw "Error logging in"; // Throw an error if response status is not ok
+        }
+      })
+      .then((data) => {
+        if (data) {
+          const token = data.access_token;
+          // Save token to localStorage
+          localStorage.setItem("authToken", token);
+          navigate("/dashboard");
+        }
+      })
+      .catch((error) => {
+        setOpenAlert(true);
+        setMessage(error); // Set the error message
+      });
   };
 
   return (
     <div className="h-screen bg-gray-100 flex items-center justify-center">
-      <div className="flex w-full max-w-8xl h-full">
+      <div className="flex w-full max-w-8xl h-full relative">
+        {openAlert ? (
+          <div className="fixed top-0 left-0 w-full z-50 flex justify-center">
+            <Alert
+              severity="error"
+              className="w-3/4 max-w-lg"
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                textAlign: "center",
+              }}
+            >
+              {message}
+            </Alert>
+          </div>
+        ) : (
+          ""
+        )}
         <div className="w-full md:w-1/2 bg-white flex flex-col justify-center p-12 lg:p-20">
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
             Welcome Back!

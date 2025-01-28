@@ -34,7 +34,7 @@ function pagination(props) {
     }
   };
   return (
-    <div>
+    <div className="flex justify-between items-center mt-4">
       <button onClick={handlePrev} disabled={props.currentPage === 1}>
         Prev
       </button>

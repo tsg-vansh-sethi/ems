@@ -1,333 +1,177 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Pagination from "../components/pagination.jsx";
 import AddEmployeeForm from "../components/addEmployeeForm.jsx";
 import { Link } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import { useNavigate } from "react-router-dom";
+import { GoSearch } from "react-icons/go";
 function AdminDashboard() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  // pagination
+  const [data, setData] = useState([]);
+  const [role, setRole] = useState(null);
+  const [isDataUpdated, setDataUpdated] = useState(false);
   const [currentPage, setcurrentPage] = useState(1);
-  const [dataPerPage, setdataPerPage] = useState(5);
-  // in js we have slice functions cuts array using start and last index
-  // data.slice(10,20) we will get data of values raning from 11 to 20
-  // now how to find last and post index
+  const [dataPerPage] = useState(10);
+
   const lastIndex = currentPage * dataPerPage;
   const firstIndex = lastIndex - dataPerPage;
+  const token = localStorage.getItem("authToken");
+
+  useEffect(() => {
+    if (token) {
+      const decoded = jwtDecode(token);
+      setRole(decoded.role);
+    }
+  }, [token]);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
+    setcurrentPage(1);
   };
 
-  const data = [
-    {
-      id: 1,
-      name: "Vansh Kumar",
-      email: "vansh.kumar@example.com",
-      phonenumber: "+1-555-234-5678",
-      address: "123 Maple Street, New York, NY",
-      department: "Finance",
-      role: "Analyst",
-      Joindate: "2022-05-15",
-    },
-    {
-      id: 2,
-      name: "Sophia Patel",
-      email: "sophia.patel@example.com",
-      phonenumber: "+1-555-678-1234",
-      address: "456 Elm Avenue, Chicago, IL",
-      department: "Marketing",
-      role: "Manager",
-      Joindate: "2021-03-20",
-    },
-    {
-      id: 3,
-      name: "Liam Smith",
-      email: "liam.smith@example.com",
-      phonenumber: "+1-555-345-6789",
-      address: "789 Pine Road, Los Angeles, CA",
-      department: "Engineering",
-      role: "Software Developer",
-      Joindate: "2020-08-10",
-    },
-    {
-      id: 4,
-      name: "Emma Johnson",
-      email: "emma.johnson@example.com",
-      phonenumber: "+1-555-987-6543",
-      address: "101 Birch Lane, Houston, TX",
-      department: "Human Resources",
-      role: "HR Specialist",
-      Joindate: "2019-11-25",
-    },
-    {
-      id: 5,
-      name: "Noah Brown",
-      email: "noah.brown@example.com",
-      phonenumber: "+1-555-123-4567",
-      address: "202 Oak Drive, Miami, FL",
-      department: "Sales",
-      role: "Sales Executive",
-      Joindate: "2023-01-05",
-    },
-    {
-      id: 6,
-      name: "Olivia Davis",
-      email: "olivia.davis@example.com",
-      phonenumber: "+1-555-654-3210",
-      address: "303 Cedar Court, Seattle, WA",
-      department: "Operations",
-      role: "Operations Manager",
-      Joindate: "2018-07-12",
-    },
-    {
-      id: 7,
-      name: "Elijah Miller",
-      email: "elijah.miller@example.com",
-      phonenumber: "+1-555-432-5678",
-      address: "404 Ash Street, Denver, CO",
-      department: "IT",
-      role: "System Administrator",
-      Joindate: "2020-09-30",
-    },
-    {
-      id: 8,
-      name: "Ava Wilson",
-      email: "ava.wilson@example.com",
-      phonenumber: "+1-555-876-5432",
-      address: "505 Spruce Avenue, Atlanta, GA",
-      department: "Design",
-      role: "Graphic Designer",
-      Joindate: "2021-02-18",
-    },
-    {
-      id: 9,
-      name: "Mason Taylor",
-      email: "mason.taylor@example.com",
-      phonenumber: "+1-555-234-8765",
-      address: "606 Willow Street, Boston, MA",
-      department: "Legal",
-      role: "Legal Advisor",
-      Joindate: "2017-06-22",
-    },
-    {
-      id: 10,
-      name: "Isabella Martinez",
-      email: "isabella.martinez@example.com",
-      phonenumber: "+1-555-789-1234",
-      address: "707 Poplar Road, San Francisco, CA",
-      department: "Customer Support",
-      role: "Customer Support Specialist",
-      Joindate: "2022-10-03",
-    },
-    {
-      id: 11,
-      name: "Vansh Williams",
-      email: "ethan.williams@example.com",
-      phonenumber: "+1-555-111-2222",
-      address: "111 Cherry Lane, Dallas, TX",
-      department: "Finance",
-      role: "Accountant",
-      Joindate: "2023-02-12",
-    },
-    {
-      id: 12,
-      name: "Ava Johnson",
-      email: "ava.johnson@example.com",
-      phonenumber: "+1-555-333-4444",
-      address: "222 Maple Avenue, Phoenix, AZ",
-      department: "Marketing",
-      role: "SEO Specialist",
-      Joindate: "2021-06-25",
-    },
-    {
-      id: 13,
-      name: "James Brown",
-      email: "james.brown@example.com",
-      phonenumber: "+1-555-555-6666",
-      address: "333 Pine Drive, San Diego, CA",
-      department: "Engineering",
-      role: "Backend Developer",
-      Joindate: "2020-04-30",
-    },
-    {
-      id: 14,
-      name: "Mia Davis",
-      email: "mia.davis@example.com",
-      phonenumber: "+1-555-777-8888",
-      address: "444 Oak Street, Las Vegas, NV",
-      department: "Human Resources",
-      role: "HR Manager",
-      Joindate: "2019-01-14",
-    },
-    {
-      id: 15,
-      name: "Lucas Martinez",
-      email: "lucas.martinez@example.com",
-      phonenumber: "+1-555-999-0000",
-      address: "555 Birch Court, Orlando, FL",
-      department: "Sales",
-      role: "Sales Representative",
-      Joindate: "2022-11-20",
-    },
-    {
-      id: 16,
-      name: "Ella Hernandez",
-      email: "ella.hernandez@example.com",
-      phonenumber: "+1-555-121-2323",
-      address: "666 Cedar Lane, Portland, OR",
-      department: "Operations",
-      role: "Logistics Coordinator",
-      Joindate: "2021-08-05",
-    },
-    {
-      id: 17,
-      name: "Benjamin Thompson",
-      email: "benjamin.thompson@example.com",
-      phonenumber: "+1-555-343-4545",
-      address: "777 Willow Way, Charlotte, NC",
-      department: "IT",
-      role: "Network Engineer",
-      Joindate: "2020-10-11",
-    },
-    {
-      id: 18,
-      name: "Amelia Taylor",
-      email: "amelia.taylor@example.com",
-      phonenumber: "+1-555-565-6767",
-      address: "888 Poplar Street, Nashville, TN",
-      department: "Design",
-      role: "UI/UX Designer",
-      Joindate: "2021-03-18",
-    },
-    {
-      id: 19,
-      name: "Henry White",
-      email: "henry.white@example.com",
-      phonenumber: "+1-555-787-8989",
-      address: "999 Ash Avenue, Austin, TX",
-      department: "Legal",
-      role: "Legal Consultant",
-      Joindate: "2018-12-04",
-    },
-    {
-      id: 20,
-      name: "Charlotte Moore",
-      email: "charlotte.moore@example.com",
-      phonenumber: "+1-555-909-1010",
-      address: "1010 Spruce Boulevard, Detroit, MI",
-      department: "Customer Support",
-      role: "Customer Success Manager",
-      Joindate: "2022-07-22",
-    },
-    {
-      id: 21,
-      name: "Jack Robinson",
-      email: "jack.robinson@example.com",
-      phonenumber: "+1-555-112-1313",
-      address: "1111 Oakwood Street, Denver, CO",
-      department: "Finance",
-      role: "Financial Analyst",
-      Joindate: "2021-09-10",
-    },
-    {
-      id: 22,
-      name: "Sophia Green",
-      email: "sophia.green@example.com",
-      phonenumber: "+1-555-414-5151",
-      address: "1212 Redwood Road, Seattle, WA",
-      department: "Engineering",
-      role: "Frontend Developer",
-      Joindate: "2020-02-24",
-    },
-    {
-      id: 23,
-      name: "Logan Adams",
-      email: "logan.adams@example.com",
-      phonenumber: "+1-555-616-7171",
-      address: "1313 Beech Street, Chicago, IL",
-      department: "Marketing",
-      role: "Content Strategist",
-      Joindate: "2022-05-16",
-    },
-    {
-      id: 24,
-      name: "Grace Clark",
-      email: "grace.clark@example.com",
-      phonenumber: "+1-555-818-9191",
-      address: "1414 Aspen Lane, Boston, MA",
-      department: "Human Resources",
-      role: "Recruiter",
-      Joindate: "2019-07-19",
-    },
-  ];
+  useEffect(() => {
+    getData();
+  }, [isDataUpdated]);
+
+  const getData = () => {
+    fetch("http://127.0.0.1:8000/getAllUsers", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return Promise.reject(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setData(data);
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
+  };
+
+  const handleDelete = (email) => {
+    fetch(`http://127.0.0.1:8000/dashboard/${email}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          setDataUpdated(true);
+        }
+      })
+      .catch((error) => console.error("Error deleting employee:", error));
+  };
+
+  const handleClick = () => {
+    navigate("/dashboard/myprofile");
+  };
   const filteredData = data.filter((item) =>
     search.toLowerCase() === ""
       ? true
       : item.name.toLowerCase().includes(search.toLowerCase())
   );
+
   const currentData = filteredData.slice(firstIndex, lastIndex);
+
   const renderTableRows = () => {
     return currentData.map((item) => (
-      <tr key={item.id}>
-        <td>{item.id}</td>
-        <td>{item.name}</td>
-        <td>{item.email}</td>
-        <td>{item.phonenumber}</td>
-        <td>{item.address}</td>
-        <td>{item.department}</td>
-        <td>{item.role}</td>
-        <td>{item.Joindate}</td>
-        <td>
-          <button>Edit</button>/<button>Delete</button>
+      <tr key={item._id} className="border-b">
+        <td className="p-2">{item._id}</td>
+        <td className="p-2">{item.name}</td>
+        <td className="p-2">{item.email}</td>
+        <td className="p-2">{item.phoneNumber}</td>
+        <td className="p-2">{item.address}</td>
+        <td className="p-2">{item.department}</td>
+        <td className="p-2">{item.role}</td>
+        <td className="p-2">{item.startingDate}</td>
+        <td className="p-2">
+          {role === "admin" && (
+            <div className="flex gap-2">
+              <button
+                className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
+                onClick={() => handleEdit(item.email)}
+              >
+                Edit
+              </button>
+              <button
+                className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700"
+                onClick={() => handleDelete(item.email)}
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </td>
       </tr>
     ));
   };
+
   return (
-    <div>
-      <div className="navBar">
-        <h2>Hi User!</h2>
-        <div className="NavItems">
-          <ul>
-            <li style={{ listStyle: "none" }}>
-              <AddEmployeeForm />
-            </li>
-            <li style={{ listStyle: "none" }}>
-              <button>
-                <Link to="/login">Signout</Link>t
-              </button>
-            </li>
-          </ul>
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex-column ">
+        <div className="flex justify-between items-center bg-white p-6 rounded-md shadow">
+          <h2 className="text-xl font-bold">
+            Hi {role === "admin" ? "Admin" : "Employee"}!
+          </h2>
+          <div className="flex items-center border border-gray-300 rounded-md px-2 py-1">
+            <GoSearch className="text-gray-500 mr-2" />
+            <input
+              type="text"
+              name="userInput"
+              placeholder="Search For Employee"
+              className="p-2 rounded-md w-lg outline-none flex-1 bg-transparent"
+              onChange={handleSearch}
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleClick}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              My Profile
+            </button>
+            {role === "admin" && (
+              <AddEmployeeForm setDataUpdated={setDataUpdated} />
+            )}
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
+              <Link to="/">Signout</Link>
+            </button>
+          </div>
+        </div>
+        <div className="mt-2 bg-white p-6 rounded-md shadow">
+          <table className="w-full text-left border-collapse border border-gray-200">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="p-2">ID</th>
+                <th className="p-2">Name</th>
+                <th className="p-2">Email</th>
+                <th className="p-2">Phone Number</th>
+                <th className="p-2">Address</th>
+                <th className="p-2">Department</th>
+                <th className="p-2">Role</th>
+                <th className="p-2">Join Date</th>
+                {role === "admin" && <th className="p-2">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>{renderTableRows()}</tbody>
+          </table>
+          <Pagination
+            dataLength={filteredData.length}
+            dataPerPage={dataPerPage}
+            currentPage={currentPage}
+            setcurrentPage={setcurrentPage}
+          />
         </div>
       </div>
-      <div className="searchBar">
-        <input
-          type="text"
-          name="userInput"
-          placeholder="Search For Employee"
-          onChange={handleSearch}
-        ></input>
-      </div>
-      <table style={{ border: "1px solid black" }}>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone Number</th>
-            <th>Address</th>
-            <th>Department</th>
-            <th>Role</th>
-            <th>Join Date</th>
-          </tr>
-        </thead>
-        <tbody>{renderTableRows()}</tbody>
-      </table>
-      <Pagination
-        dataLength={filteredData.length}
-        dataPerPage={dataPerPage}
-        currentPage={currentPage}
-        setcurrentPage={setcurrentPage}
-      />
     </div>
   );
 }
