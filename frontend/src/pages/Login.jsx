@@ -1,7 +1,15 @@
 import React, { useState } from "react";
-import { data, Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
+import axios from "axios";
+import { useEffect } from "react";
 function Login() {
+  useEffect(() => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("name");
+    localStorage.removeItem("userRole");
+  }, []);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -14,40 +22,30 @@ function Login() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    fetch("http://127.0.0.1:8000/login", {
-      method: "POST", // Specify the method
-      headers: {
-        "Content-Type": "application/json", // Set the content type to JSON
-      },
-      body: JSON.stringify(formData), // Convert JavaScript object to JSON string
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json(); // Parse the JSON response if successful
-        } else {
-          throw "Error logging in"; // Throw an error if response status is not ok
-        }
-      })
-      .then((data) => {
-        if (data) {
-          const token = data.access_token;
-          // Save token to localStorage
-          localStorage.setItem("authToken", token);
-          navigate("/dashboard");
-        }
-      })
-      .catch((error) => {
-        setOpenAlert(true);
-        setMessage(error); // Set the error message
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Prevent form refresh
+
+    try {
+      await axios.post("http://127.0.0.1:8000/login", formData, {
+        withCredentials: true, // Ensures cookie is set in browser
+        headers: { "Content-Type": "application/json" },
       });
+      const response = await axios.get("http://127.0.0.1:8000/me", {
+        withCredentials: true, // Ensures cookies are sent with request
+      });
+      console.log(response.data);
+    } catch (error) {
+      // Handle login or user fetch error
+      const errorMessage = error.response.data.detail;
+      setOpenAlert(true);
+      setMessage(errorMessage);
+    }
   };
 
   return (
     <div className="h-screen bg-gray-100 flex items-center justify-center">
       <div className="flex w-full max-w-8xl h-full relative">
-        {openAlert ? (
+        {openAlert && (
           <div className="fixed top-0 left-0 w-full z-50 flex justify-center">
             <Alert
               severity="error"
@@ -61,8 +59,6 @@ function Login() {
               {message}
             </Alert>
           </div>
-        ) : (
-          ""
         )}
         <div className="w-full md:w-1/2 bg-white flex flex-col justify-center p-12 lg:p-20">
           <h1 className="text-5xl font-bold text-gray-800 mb-4">

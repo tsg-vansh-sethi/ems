@@ -2,76 +2,83 @@ import { useState, useEffect } from "react";
 import Pagination from "../components/pagination.jsx";
 import AddEmployeeForm from "../components/addEmployeeForm.jsx";
 import { Link } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom";
 import { GoSearch } from "react-icons/go";
+import EditForm from "../components/EditForm.jsx";
+import Profile from "../components/Profile.jsx";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 function AdminDashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [data, setData] = useState([]);
-  const [role, setRole] = useState(null);
   const [isDataUpdated, setDataUpdated] = useState(false);
   const [currentPage, setcurrentPage] = useState(1);
   const [dataPerPage] = useState(10);
-
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [visible, setVisible] = useState(false);
   const lastIndex = currentPage * dataPerPage;
   const firstIndex = lastIndex - dataPerPage;
+  const userEmail = localStorage.getItem("userEmail");
+  const role = localStorage.getItem("userRole");
   const token = localStorage.getItem("authToken");
-
-  useEffect(() => {
-    if (token) {
-      const decoded = jwtDecode(token);
-      setRole(decoded.role);
-    }
-  }, [token]);
-
+  const name = localStorage.getItem("name");
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setcurrentPage(1);
   };
 
   useEffect(() => {
+    if (!token) {
+      navigate("/");
+      return;
+    }
     getData();
   }, [isDataUpdated]);
 
-  const getData = () => {
-    fetch("http://127.0.0.1:8000/getAllUsers", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return Promise.reject(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setData(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
+  const getData = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/getAllUsers", {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      setData(response.data.filter((item) => item.email !== userEmail));
+    } catch (error) {
+      console.error("Axios Error:", error.response.data);
+    }
   };
 
-  const handleDelete = (email) => {
-    fetch(`http://127.0.0.1:8000/dashboard/${email}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((response) => {
-        if (response.ok) {
-          setDataUpdated(true);
-        }
-      })
-      .catch((error) => console.error("Error deleting employee:", error));
+  const handleDelete = async (email) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8000/dashboard/${email}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDataUpdated(true);
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        console.log("Token expired! Redirecting to login...");
+        localStorage.removeItem("authToken");
+        navigate("/");
+        console.log("Axios Error:", error.response.data);
+      }
+      // fetch(`http://127.0.0.1:8000/dashboard/${email}`, {
+      //   method: "DELETE",
+      //   headers: {
+      //     Authorization: `Bearer ${token}`,
+      //   },
+      // })
+      //   .then((response) => {
+      //     if (response.ok) {
+      //       setDataUpdated(true);
+      //     }
+      //   })
+      //   .catch((error) => console.error("Error deleting employee:", error));
+    }
   };
-
-  const handleClick = () => {
-    navigate("/dashboard/myprofile");
+  const handleSignout = () => {
+    navigate("/");
+  };
+  const handleEditClick = (user) => {
+    setSelectedUser(user);
+    setVisible(true);
   };
   const filteredData = data.filter((item) =>
     search.toLowerCase() === ""
@@ -83,8 +90,7 @@ function AdminDashboard() {
 
   const renderTableRows = () => {
     return currentData.map((item) => (
-      <tr key={item._id} className="border-b">
-        <td className="p-2">{item._id}</td>
+      <tr key={item.email} className="border-b">
         <td className="p-2">{item.name}</td>
         <td className="p-2">{item.email}</td>
         <td className="p-2">{item.phoneNumber}</td>
@@ -96,8 +102,8 @@ function AdminDashboard() {
           {role === "admin" && (
             <div className="flex gap-2">
               <button
-                className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
-                onClick={() => handleEdit(item.email)}
+                onClick={() => handleEditClick(item)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
               >
                 Edit
               </button>
@@ -113,14 +119,11 @@ function AdminDashboard() {
       </tr>
     ));
   };
-
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex-column ">
         <div className="flex justify-between items-center bg-white p-6 rounded-md shadow">
-          <h2 className="text-xl font-bold">
-            Hi {role === "admin" ? "Admin" : "Employee"}!
-          </h2>
+          <h2 className="text-xl font-bold">Hi {name}!</h2>
           <div className="flex items-center border border-gray-300 rounded-md px-2 py-1">
             <GoSearch className="text-gray-500 mr-2" />
             <input
@@ -133,25 +136,22 @@ function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleClick}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              My Profile
-            </button>
             {role === "admin" && (
               <AddEmployeeForm setDataUpdated={setDataUpdated} />
             )}
-            <button className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-              <Link to="/">Signout</Link>
+            <button
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+              onClick={handleSignout}
+            >
+              Signout
             </button>
           </div>
         </div>
+        <Profile role={role} sendEmail={userEmail} passToken={token} />
         <div className="mt-2 bg-white p-6 rounded-md shadow">
           <table className="w-full text-left border-collapse border border-gray-200">
             <thead className="bg-gray-200">
               <tr>
-                <th className="p-2">ID</th>
                 <th className="p-2">Name</th>
                 <th className="p-2">Email</th>
                 <th className="p-2">Phone Number</th>
@@ -164,6 +164,7 @@ function AdminDashboard() {
             </thead>
             <tbody>{renderTableRows()}</tbody>
           </table>
+
           <Pagination
             dataLength={filteredData.length}
             dataPerPage={dataPerPage}
@@ -172,6 +173,14 @@ function AdminDashboard() {
           />
         </div>
       </div>
+      {selectedUser && (
+        <EditForm
+          user={selectedUser}
+          visible={visible}
+          setVisible={setVisible}
+          setDataUpdated={setDataUpdated}
+        />
+      )}
     </div>
   );
 }

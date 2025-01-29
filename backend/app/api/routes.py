@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException,Depends
-from models import User,LoginRequest,Token_Payload
-from core import authenticateUser,getAllUsers,addEmployee,ifEmployeeExist,updateEmployee,deleteEmployee,generateJWTtoken,get_current_user,getUser
+from fastapi import APIRouter, HTTPException,Depends,Response
+from models import User,LoginRequest
+from jose import jwt
+from core import authenticateUser,getAllUsers,addEmployee,ifEmployeeExist,updateEmployee,deleteEmployee,generateJWTtoken,get_current_user,getUser,ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import EmailStr
 from db import my_collection
+from fastapi.responses import JSONResponse
 # router =APIRouter()
 # as here all routes are of User so no need to explicitly mention, define in APIRouter()
 router =APIRouter(
@@ -12,7 +14,7 @@ router =APIRouter(
 
 
 @router.post("/login")
-def login(user:LoginRequest):
+def login(user:LoginRequest, response: Response):
     
     is_authenticated=authenticateUser(user)
     if not is_authenticated:
@@ -20,13 +22,29 @@ def login(user:LoginRequest):
     # now both email and password working now we have to issue jwt token
     #we dont have to manually go and create these tokens , python has packages for it-pythonjose
     fullDocument=my_collection.find_one({"email": user.email})
-    user_dict=user.model_dump()
-    access_token=generateJWTtoken(user_dict["email"],fullDocument["role"])
-    return {"access_token":access_token,"token-type":"bearer"} #The Bearer keyword means "the person holding this token is authorized."
+    access_token = generateJWTtoken(fullDocument["email"], fullDocument["role"])
+    response = JSONResponse(content={"message": "Login successful"})
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Prevent JavaScript access (XSS protection)
+        secure=True,  # Ensures HTTPS-only transmission (important for production)
+         samesite="None",  # Helps prevent CSRF attacks
+        max_age=60 * ACCESS_TOKEN_EXPIRE_MINUTES  # Cookie expiry (matches token expiry)
+    )
+    return response
+
+@router.get("/me")
+def get_user_data(current_user: dict = Depends(get_current_user)):
+    return current_user  # Return user email and role
+@router.post("/logout")
+def logout(response: Response):
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie("access_token")  # Clears the cookie
+    return response
 
 @router.get("/getAllUsers")
 def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_user):Only users with a valid JWT token can access it.
-
     response=getAllUsers()
     return response
 

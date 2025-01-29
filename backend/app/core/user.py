@@ -1,16 +1,16 @@
-from models import User,LoginRequest,Token_Payload  
+from models import User,LoginRequest
 from fastapi import HTTPException
 from db import my_collection
 from db import audit_collection
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 from dotenv import load_dotenv
 from jose import jwt,JWTError
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
 import os
-
+from fastapi import Cookie
 #OAuth2PasswordBearer is a FastAPI class that extracts Bearer tokens from the Authorization header.
 # when we pass the token url: oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login') login route will return a JSON response like: {"access_token": access_token, "token_type":"bearer"}
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")  
@@ -34,14 +34,17 @@ def generateJWTtoken(email,role):
     encoded_jwt=jwt.encode(to_encode,SECRET_KEY,ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token:str= Depends(oauth2_scheme)): # this particular function will go ahead and accept the token and if valid will allow user to get access to protected routes
-    #Depends(oauth2_scheme):Automatically extracts the Bearer token from the Authorization header.
+def get_current_user(access_token: str = Cookie(None)):  # Extract token from cookies
      #try-except when working with functions or libraries that can throw exceptions you don’t directly control (e.g., jwt.decode or database queries). we dont know how jwt decode works externlly
+     print(access_token)
+     if not access_token:
+        raise HTTPException(status_code=401, detail="Missing token")    
      try:
-         payload=jwt.decode(token,SECRET_KEY,ALGORITHM)
-         email:EmailStr=payload.get("email")
-         if not email:
-             raise HTTPException(status_code=401, detail="Invalid token")
+         payload=jwt.decode(access_token,SECRET_KEY,ALGORITHM)
+         exp=payload.get("expire")
+         # add a check for expire time
+         if datetime.now(timezone.utc).timestamp() > exp:
+            raise HTTPException(status_code=401, detail="Token expired")
          return payload
      except JWTError:
          raise HTTPException(status_code=401, detail="Invalid token")
