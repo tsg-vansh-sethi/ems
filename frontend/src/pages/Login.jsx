@@ -26,7 +26,7 @@ function Login() {
     e.preventDefault(); // Prevent form refresh
 
     try {
-      await axios.post("http://127.0.0.1:8000/login", formData, {
+      await axios.post("http://localhost:8000/login", formData, {
         withCredentials: true, // Ensures cookie is set in browser
         headers: { "Content-Type": "application/json" },
       });

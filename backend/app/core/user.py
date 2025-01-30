@@ -19,10 +19,12 @@ def hash_password(password: str) -> str:
     """Hash the password using bcrypt."""
     return passwordHasher.hash(password)
 
-load_dotenv()
+load_dotenv(dotenv_path="../.env")
 # for jwt token generation
-SECRET_KEY=os.getenv("SECRET_KEY")
-ALGORITHM=os.getenv("ALGORITHM")
+# SECRET_KEY=os.getenv("SECRET_KEY")
+# ALGORITHM=os.getenv("ALGORITHM")
+SECRET_KEY="ba6f32be396adb3115c3a89f457262d4e70008fd36aff61adf46b33f89112520"
+ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=20
 
 def generateJWTtoken(email,role):
