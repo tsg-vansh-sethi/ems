@@ -14,5 +14,6 @@ client = MongoClient(mongo_uri)
 my_database=client["EMS"]
 my_collection=my_database["users"]
 audit_collection=my_database["audit_logs"]
+faker_collection=my_database["faker"]
 
  

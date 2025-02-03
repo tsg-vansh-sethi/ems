@@ -1,17 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import EditForm from "./EditForm.jsx";
-function Profile(props) {
-  const [currentUser, setCurrentUser] = useState({});
-  const [isEditing, setisEditing] = useState(false);
-  useEffect(() => {
-    fetchCurrentUser(props.sendEmail);
-  }, []);
+import { AuthContext } from "../components/AuthProvider.jsx";
 
+function Profile() {
+  const {
+    userEmail,
+    currentUser,
+    setCurrentUser,
+    setSelectedUser,
+    isEditing,
+    setisEditing,
+    isDataUpdated,
+  } = useContext(AuthContext);
+  useEffect(() => {
+    if (userEmail) {
+      fetchCurrentUser(userEmail);
+    }
+  }, [isDataUpdated, userEmail]);
   const fetchCurrentUser = async (email) => {
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/user/${email}`, {
-        headers: { Authorization: `Bearer ${props.passToken}` },
+      const response = await axios.get(`http://localhost:8000/user/${email}`, {
+        withCredentials: true,
       });
       setCurrentUser(response.data);
     } catch (error) {
@@ -37,6 +47,7 @@ function Profile(props) {
     //   });
   };
   const handleClick = () => {
+    setSelectedUser(null);
     setisEditing(true);
   };
   return (
@@ -57,22 +68,14 @@ function Profile(props) {
             <strong>Address:</strong> {currentUser.address}
           </p>
           <button
-            className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
+            className="bg-blue-600 cursor-pointer text-white px-3 py-1 rounded-md hover:bg-blue-700"
             onClick={handleClick}
           >
             Edit Profile
           </button>
         </div>
       </div>
-      {isEditing && (
-        <EditForm
-          user={currentUser}
-          role={props.role}
-          isEditing={isEditing}
-          setisEditing={setisEditing}
-          setDataUpdated={props.setDataUpdated}
-        />
-      )}
+      {isEditing && <EditForm />}
     </>
   );
 }

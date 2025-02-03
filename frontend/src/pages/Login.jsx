@@ -1,16 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
-import axios from "axios";
-import { useEffect } from "react";
+import { AuthContext } from "../components/AuthProvider.jsx";
 function Login() {
-  useEffect(() => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("name");
-    localStorage.removeItem("userRole");
-  }, []);
   const navigate = useNavigate();
+  const { login, userRole, userEmail } = useContext(AuthContext);
+  console.log(userEmail);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,20 +18,13 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent form refresh
+    e.preventDefault();
 
     try {
-      await axios.post("http://127.0.0.1:8000/login", formData, {
-        withCredentials: true, // Ensures cookie is set in browser
-        headers: { "Content-Type": "application/json" },
-      });
-      const response = await axios.get("http://127.0.0.1:8000/me", {
-        withCredentials: true, // Ensures cookies are sent with request
-      });
-      console.log(response.data);
+      await login(formData.email, formData.password);
+      navigate("/dashboard");
     } catch (error) {
-      // Handle login or user fetch error
-      const errorMessage = error.response.data.detail;
+      const errorMessage = error.message;
       setOpenAlert(true);
       setMessage(errorMessage);
     }
@@ -105,12 +93,6 @@ function Login() {
               Login
             </button>
           </form>
-          <p className="text-gray-600 mt-6">
-            Don’t have an account?{" "}
-            <Link to="/signup" className="text-blue-600 hover:underline">
-              Sign Up
-            </Link>
-          </p>
         </div>
         <div className="hidden md:block w-full md:w-1/2 h-full">
           <img

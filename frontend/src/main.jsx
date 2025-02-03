@@ -2,10 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
-import { BrowserRouter } from "react-router-dom";
+import { AuthProvider } from "./components/AuthProvider.jsx"; // Import AuthProvider
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {/* BrowserRouter keeps track of different routes and links we have in our website */}
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </StrictMode>
 );

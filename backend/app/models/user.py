@@ -9,13 +9,7 @@ class User(BaseModel):
     phoneNumber:int
     role:str
     department:str
-    startingDate:datetime
-    class Config:
-        # Customize datetime serialization
-        json_encoders = {
-            datetime: lambda v: v.strftime("%m/%d/%y")  # Format: mm/dd/yy
-        }
-
+    startingDate:str
         
 class LoginRequest(BaseModel):
     email: EmailStr

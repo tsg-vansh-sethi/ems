@@ -1,64 +1,129 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import Pagination from "../components/pagination.jsx";
 import AddEmployeeForm from "../components/addEmployeeForm.jsx";
-import { Link } from "react-router-dom";
 import { GoSearch } from "react-icons/go";
 import EditForm from "../components/EditForm.jsx";
 import Profile from "../components/Profile.jsx";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../components/AuthProvider.jsx";
+import { FaArrowDownLong, FaArrowUpLong } from "react-icons/fa6";
+import Alert from "@mui/material/Alert";
+export const userContext = createContext();
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+
+  const {
+    isDataUpdated,
+    setDataUpdated,
+    setSelectedUser,
+    selectedUser,
+    setVisible,
+    currentPage,
+    setcurrentPage,
+    dataPerPage,
+    currentUser,
+    isAuthenticated,
+  } = useContext(AuthContext);
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href); // 3 argumnets state(session related info), title(to intend to chnage browser title by old browser) and lastly pushes the current state of browser to stack
+    window.onpopstate = function () {
+      window.location.reload(); // onpopstate fires when the user clicks the browser back or forward button.
+    };
+  }, []);
+  const { userRole, userEmail, userName } = useContext(AuthContext);
+  const [searchText, setSearchText] = useState("");
   const [data, setData] = useState([]);
-  const [isDataUpdated, setDataUpdated] = useState(false);
-  const [currentPage, setcurrentPage] = useState(1);
-  const [dataPerPage] = useState(10);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [visible, setVisible] = useState(false);
+  const [start, setStart] = useState(0);
+  const [limit] = useState(1000);
   const lastIndex = currentPage * dataPerPage;
   const firstIndex = lastIndex - dataPerPage;
-  const userEmail = localStorage.getItem("userEmail");
-  const role = localStorage.getItem("userRole");
-  const token = localStorage.getItem("authToken");
-  const name = localStorage.getItem("name");
+  const [filterType, setFilterType] = useState("name");
+
+  // for sorting
+  const [sortField, setSortField] = useState(null);
+  const [sortOrder, setSortOrder] = useState(null); // "asc", "desc", "none"
+  const handleSort = (e) => {
+    const columnName = e.target.innerText.trim().toLowerCase(); // Remove extra spaces
+    const columnMap = {
+      "phone number": "phoneNumber",
+      "join date": "startingDate",
+      name: "name",
+      email: "email",
+      address: "address",
+      department: "department",
+      role: "role",
+    };
+    const sortColumn = columnMap[columnName];
+    if (!sortColumn) return; // Ignore clicks on invalid columns
+    let newOrder;
+    if (sortField === sortColumn) {
+      if (sortOrder === null) newOrder = "asc";
+      else if (sortOrder === "asc") newOrder = "desc";
+      else newOrder = null;
+    } else {
+      newOrder = "asc"; // default to ascending on new column click
+    }
+
+    setSortField(sortColumn);
+    setSortOrder(newOrder);
+    fetchSortedUsers(sortColumn, newOrder);
+  };
+  const fetchSortedUsers = async (field, order) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/sorted-users?sort_by=${field}&order=${order}`
+      );
+      setData(response.data.users);
+    } catch (error) {}
+  };
   const handleSearch = (e) => {
-    setSearch(e.target.value);
+    setSearchText(e.target.value);
     setcurrentPage(1);
   };
-
   useEffect(() => {
-    if (!token) {
-      navigate("/");
-      return;
-    }
-    getData();
+    // deleteUsers();
+    getAllUsers();
+    setDataUpdated(false);
   }, [isDataUpdated]);
+  // useEffect(() => {
+  //   if (userEmail) {
+  //     fetchUsers(); // Only call getData() when userEmail is available
+  //   }
+  // }, [isDataUpdated, userEmail]);
 
-  const getData = async () => {
+  const getAllUsers = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8000/getAllUsers", {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await axios.get("http://localhost:8000/getAllUsers", {
+        withCredentials: true,
       });
-      setData(response.data.filter((item) => item.email !== userEmail));
+      setData(response.data); // Increment start index
     } catch (error) {
-      console.error("Axios Error:", error.response.data);
+      console.error("Error fetching users:", error);
+    }
+  };
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/get-users?start=${start}&limit=${limit}`
+      );
+      setData([...response.data.users]);
+      setStart(start + limit); // Increment start index
+    } catch (error) {
+      console.error("Error fetching users:", error);
     }
   };
 
   const handleDelete = async (email) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/dashboard/${email}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.delete(`http://localhost:8000/dashboard/${email}`, {
+        withCredentials: true,
       });
       setDataUpdated(true);
+      setSortField(null);
+      setSortOrder(null);
     } catch (error) {
-      if (error.response && error.response.status === 401) {
-        console.log("Token expired! Redirecting to login...");
-        localStorage.removeItem("authToken");
-        navigate("/");
-        console.log("Axios Error:", error.response.data);
-      }
+      console.error("Error fetching users:", error);
       // fetch(`http://127.0.0.1:8000/dashboard/${email}`, {
       //   method: "DELETE",
       //   headers: {
@@ -73,114 +138,231 @@ function AdminDashboard() {
       //   .catch((error) => console.error("Error deleting employee:", error));
     }
   };
-  const handleSignout = () => {
-    navigate("/");
+  const deleteUsers = async () => {
+    try {
+      const response = await axios.delete(
+        "http://localhost:8000/delete-users",
+        {
+          withCredentials: true,
+        }
+      );
+      setData([]);
+      setStart(0);
+      setDataUpdated(true);
+    } catch (error) {
+      console.error("Error deleting users:", error);
+    }
+  };
+  const handleSignout = async () => {
+    try {
+      const response = await axios.post("http://localhost:8000/logout", {
+        withCredentials: true,
+      });
+      navigate("/");
+    } catch (error) {
+      throw new Error(error.response.data.detail);
+    }
   };
   const handleEditClick = (user) => {
     setSelectedUser(user);
     setVisible(true);
   };
-  const filteredData = data.filter((item) =>
-    search.toLowerCase() === ""
-      ? true
-      : item.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const currentData = filteredData.slice(firstIndex, lastIndex);
-
+  const fetchFilteredUsers = async () => {
+    if (!searchText) getAllUsers();
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/filter-users?filtertype=${filterType}&text=${searchText}`,
+        {
+          withCredentials: true,
+        }
+      );
+      setData(response.data.users); // Update with filtered users
+    } catch (error) {
+      console.error("Error fetching filtered users:", error);
+    }
+  };
+  const filteredDataLength = data.length;
+  const currentData = data.slice(firstIndex, lastIndex);
   const renderTableRows = () => {
-    return currentData.map((item) => (
-      <tr key={item.email} className="border-b">
-        <td className="p-2">{item.name}</td>
-        <td className="p-2">{item.email}</td>
-        <td className="p-2">{item.phoneNumber}</td>
-        <td className="p-2">{item.address}</td>
-        <td className="p-2">{item.department}</td>
-        <td className="p-2">{item.role}</td>
-        <td className="p-2">{item.startingDate}</td>
-        <td className="p-2">
-          {role === "admin" && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleEditClick(item)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                Edit
-              </button>
-              <button
-                className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700"
-                onClick={() => handleDelete(item.email)}
-              >
-                Delete
-              </button>
-            </div>
+    if (currentData.length > 0) {
+      return currentData.map((item) => (
+        <tr key={item.email} className="border-b text-sm md:text-base">
+          <td className="p-2">{item.name}</td>
+          <td className="p-2">{item.email}</td>
+          <td className="p-2">{item.phoneNumber}</td>
+          <td className="p-2">{item.address}</td>
+          <td className="p-2">{item.department}</td>
+          <td className="p-2">{item.role}</td>
+          <td className="p-2">{item.startingDate}</td>
+          {userRole === "admin" && (
+            <td className="p-2">
+              <div className="flex flex-col md:flex-row gap-2">
+                {userEmail != item.email && (
+                  <button
+                    onClick={() => handleEditClick(item)}
+                    className="bg-blue-600 cursor-pointer text-white px-3 py-1 rounded-md hover:bg-blue-700 text-xs md:text-sm"
+                  >
+                    Edit
+                  </button>
+                )}
+                {userEmail != item.email && (
+                  <button
+                    className="bg-red-600 cursor-pointer text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs md:text-sm"
+                    onClick={() => handleDelete(item.email)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </td>
           )}
-        </td>
-      </tr>
-    ));
+        </tr>
+      ));
+    } else {
+      return (
+        <tr>
+          <td colSpan="8" className="text-center p-4 text-gray-500">
+            No users found!!
+          </td>
+        </tr>
+      );
+    }
+  };
+  const checkSortOrder = (field) => {
+    if (sortField !== field) return " "; // Show no icon for inactive columns
+    if (sortOrder === "asc") return <FaArrowUpLong className="inline" />;
+    if (sortOrder === "desc") return <FaArrowDownLong className="inline" />;
+    return " ";
   };
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="flex-column ">
-        <div className="flex justify-between items-center bg-white p-6 rounded-md shadow">
-          <h2 className="text-xl font-bold">Hi {name}!</h2>
-          <div className="flex items-center border border-gray-300 rounded-md px-2 py-1">
-            <GoSearch className="text-gray-500 mr-2" />
-            <input
-              type="text"
-              name="userInput"
-              placeholder="Search For Employee"
-              className="p-2 rounded-md w-lg outline-none flex-1 bg-transparent"
-              onChange={handleSearch}
-            />
+      <div className="max-w-8xl mx-auto space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 md:p-6 rounded-md shadow-md">
+          <h2 className="text-lg md:text-xl font-bold">
+            Hi {currentUser.name}!
+          </h2>
+          <div className="flex flex-col md:flex-row items-center gap-3 mt-2 md:mt-0">
+            <select
+              className=" py-2 border border-gray-300 rounded-md bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="name">Name</option>
+              <option value="email">Email</option>
+              <option value="address">Address</option>
+              <option value="role">Role</option>
+              <option value="department">Department</option>
+            </select>
+            {/* Search Bar */}
+            <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 w-full md:w-auto bg-white shadow-sm transition-all">
+              <GoSearch className="text-gray-500 mx-2 text-lg" />
+              <input
+                type="text"
+                name="userInput"
+                placeholder={`Search for ${filterType}...`}
+                className=" rounded-md w-64 outline-none bg-transparent flex-1 placeholder-gray-400 text-gray-700 "
+                onChange={handleSearch}
+              />
+            </div>
+            <button
+              onClick={fetchFilteredUsers}
+              className="bg-blue-600 cursor-pointer text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Search
+            </button>
           </div>
 
-          <div className="flex items-center gap-4">
-            {role === "admin" && (
-              <AddEmployeeForm setDataUpdated={setDataUpdated} />
+          <div className="flex items-center gap-2 md:gap-4 mt-2 md:mt-0">
+            {userRole === "admin" && (
+              <button
+                onClick={fetchUsers}
+                className="bg-blue-600 cursor-pointer text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm md:text-base"
+              >
+                Add Users
+              </button>
             )}
+            {userRole === "admin" && (
+              <button
+                onClick={deleteUsers}
+                className="bg-green-600 cursor-pointer text-white px-3 py-2 rounded hover:bg-green-700 text-sm md:text-base"
+              >
+                Delete Users
+              </button>
+            )}
+            {userRole === "admin" && <AddEmployeeForm />}
             <button
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+              className="bg-red-600 cursor-pointer text-white px-3 py-2 rounded-md hover:bg-red-700 text-sm md:text-base"
               onClick={handleSignout}
             >
               Signout
             </button>
           </div>
         </div>
-        <Profile role={role} sendEmail={userEmail} passToken={token} />
-        <div className="mt-2 bg-white p-6 rounded-md shadow">
-          <table className="w-full text-left border-collapse border border-gray-200">
+
+        <Profile />
+
+        <div className="bg-white p-4 md:p-6 rounded-md shadow-md overflow-x-auto">
+          <table className="w-full text-left border-collapse border border-gray-200 text-xs md:text-sm">
             <thead className="bg-gray-200">
               <tr>
-                <th className="p-2">Name</th>
-                <th className="p-2">Email</th>
-                <th className="p-2">Phone Number</th>
-                <th className="p-2">Address</th>
-                <th className="p-2">Department</th>
-                <th className="p-2">Role</th>
-                <th className="p-2">Join Date</th>
-                {role === "admin" && <th className="p-2">Actions</th>}
+                <th className="p-2 cursor-pointer" onClick={handleSort}>
+                  Name{checkSortOrder("name")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Email{checkSortOrder("email")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Phone Number
+                  {checkSortOrder("phoneNumber")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Address{checkSortOrder("address")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Department
+                  {checkSortOrder("department")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Role{checkSortOrder("role")}
+                </th>
+                <th
+                  className="p-2"
+                  style={{ cursor: "pointer" }}
+                  onClick={handleSort}
+                >
+                  Join Date {checkSortOrder("startingDate")}
+                </th>
+                {userRole === "admin" && <th className="p-2">Actions</th>}
               </tr>
             </thead>
             <tbody>{renderTableRows()}</tbody>
           </table>
 
-          <Pagination
-            dataLength={filteredData.length}
-            dataPerPage={dataPerPage}
-            currentPage={currentPage}
-            setcurrentPage={setcurrentPage}
-          />
+          <Pagination filteredDataLength={filteredDataLength} />
         </div>
       </div>
-      {selectedUser && (
-        <EditForm
-          user={selectedUser}
-          visible={visible}
-          setVisible={setVisible}
-          setDataUpdated={setDataUpdated}
-        />
-      )}
+
+      {selectedUser && <EditForm />}
     </div>
   );
 }

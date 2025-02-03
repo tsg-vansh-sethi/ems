@@ -25,8 +25,8 @@ SECRET_KEY=os.getenv("SECRET_KEY")
 ALGORITHM=os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES=20
 
-def generateJWTtoken(email,role):
-    to_encode={"email":email,"role":role}
+def generateJWTtoken(email,role,name):
+    to_encode={"email":email,"role":role,"name":name}
     # expire=datetime.now()+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)#timedelta for better readability if we dont want to use then have to pass exact time for 20 minutes , 20*60 seconds
     # datatime object is not json serilizable so we convert to timestamps (e.g., UNIX timestamps) are JSON serializable because they are represented as numbers, either integers or floats, which are supported by JSON.
     expire=(datetime.now()+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp()
@@ -55,7 +55,7 @@ def authenticateUser(user:LoginRequest)->bool:
             raise HTTPException(status_code=404,detail="User not found") #user not found
         return passwordHasher.verify(user.password,document["password"])
 
-def getAllUsers():
+def getAllUsers(email:EmailStr):
     # Retrieve all documents in the "users" collection
     # users =my_collection.find()
     #above statement doesnt work for below statement .find() returns a cursor object not list so you cannot do
@@ -80,7 +80,10 @@ def addEmployee(user:User):
     # return True
     return {"id": str(response.inserted_id)}  # Return the inserted document ID
 
-def deleteEmployee(email):
+def deleteEmployee(email,currentUser):
+    findUser=my_collection.find_one({"email":email})
+    if findUser["email"]==currentUser["email"]:
+        raise HTTPException (status_code=403,detail="Forbidden as currently logged in!!")
     response=my_collection.delete_one({"email":email})
     return response
 
@@ -89,29 +92,35 @@ def getUser(email):
     response["_id"] = str(response["_id"])
     return response
 
-def updateEmployee(email,updates):
+def updateEmployee(email,updates,current_user):
     # response=my_collection.update_one({"email":email},{"$set":{"phoneNumber":phonenumber,"address":address}})
-    role = "admin"
+    role = current_user["role"]
     # find the employee document related to email to whom we have to make changes
     employee=my_collection.find_one({"email":email})
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
     if role=="admin":
-        allowed_fields = {"name", "email","address", "phoneNumber", "department", "role","startingDate"}
+        allowed_fields = {"name","address", "phoneNumber", "department", "role","startingDate"}
     else:
-        allowed_fields = {"address", "phoneNumber"}
+        allowed_fields = {"name","address", "phoneNumber"}
         #general syntax for dictionary comprehension
         #{key: value for key, value in <source_dictionary>.items() if <condition>}
     filtered_updates = {key: value for key, value in updates.items() if key in allowed_fields}
+    changes = {
+        key: {"old": employee.get(key, None), "new": value}
+        for key, value in filtered_updates.items()
+        if employee.get(key) != value #If the old and new values are different, it means the field was updated, so we keep it.
+        }
     # Perform the update
     response = my_collection.update_one({"email": email}, {"$set": filtered_updates})
 
     audit_entry={
-        "updated_by":employee["email"],
+        "updated_by":current_user["email"],
         "role":employee["role"],
+        "updated_whom":employee["email"],
         "updated_when":datetime.now(),
-        "changes":list(filtered_updates.keys())
+        "changes":changes
     }
     audit_collection.insert_one(audit_entry)
     return response

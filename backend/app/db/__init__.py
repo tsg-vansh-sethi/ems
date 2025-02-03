@@ -1,1 +1,1 @@
-from .connection import my_collection,audit_collection
+from .connection import my_collection,audit_collection, faker_collection

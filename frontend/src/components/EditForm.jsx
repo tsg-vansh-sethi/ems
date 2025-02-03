@@ -1,38 +1,93 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RxCross1 } from "react-icons/rx";
+import { useContext } from "react";
 import axios from "axios";
-function EditForm(props) {
-  const [formData, setFormData] = useState({ ...props.user });
+import { useForm } from "react-hook-form";
+import { AuthContext } from "./AuthProvider.jsx";
+function EditForm() {
+  const {
+    selectedUser,
+    setVisible,
+    visible,
+    setDataUpdated,
+    userRole,
+    currentUser,
+    isEditing,
+    setisEditing,
+    setSelectedUser,
+  } = useContext(AuthContext);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
+    defaultValues: selectedUser || currentUser, // Set initial values
+  });
+  // const [formData, setFormData] = useState(selectedUser || currentUser);
   const closeForm = () => {
-    if (props.setisEditing) {
-      props.setisEditing(false);
+    if (setisEditing) {
+      setisEditing(false);
     }
-    if (props.setVisible) {
-      props.setVisible(false);
+    if (setVisible) {
+      setVisible(false);
     }
+    setSelectedUser(null);
   };
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-  const handleSubmit = async (e) => {
-    console.log(formData);
-    e.preventDefault(); // The e.preventDefault() method prevents the default behavior of an event in JavaScript.
-    //For forms, the default behavior is submitting the form and reloading the page. By using e.preventDefault(), you stop this default submission and allow JavaScript to handle the form data asynchronously.
-    // try{
-    //   const response=await axios.put("http://127.0.0.1:8000/dashboard/{email}",{
+  const [emailToUse, setEmailToUse] = useState("");
+  // const handleSubmit = async (e) => {
+  //   console.log(formData);
+  //   e.preventDefault(); // The e.preventDefault() method prevents the default behavior of an event in JavaScript.
+  //   //For forms, the default behavior is submitting the form and reloading the page. By using e.preventDefault(), you stop this default submission and allow JavaScript to handle the form data asynchronously.
+  //   // try{
+  //   //   const response=await axios.put("http://127.0.0.1:8000/dashboard/{email}",{
 
-    //   })
-    // }
-    // if (props.setisEditing) {
-    //   props.setisEditing(false);
-    // }
-    // if (props.setVisible) {
-    //   props.setVisible(false);
-    // }
+  //   //   })
+  //   // }
+  //   // if (props.setisEditing) {
+  //   //   props.setisEditing(false);
+  //   // }
+  //   // if (props.setVisible) {
+  //   //   props.setVisible(false);
+  //   // }
+  // };
+  useEffect(() => {
+    let email = selectedUser?.email || currentUser?.email;
+    setEmailToUse(email); // Update state
+  }, [setEmailToUse]);
+  const onSubmit = async (data) => {
+    if (userRole == "admin") {
+      const { email, department, role, phoneNumber, address, ...otherDetails } =
+        data;
+    } else {
+      const { phoneNumber, address, ...otherDetails } = data;
+    }
+    try {
+      const response = await axios.put(
+        `http://localhost:8000/dashboard/${emailToUse}`,
+        data,
+        {
+          withCredentials: true,
+        }
+      );
+      setDataUpdated(true);
+      if (setisEditing) {
+        setisEditing(false);
+      }
+      if (setVisible) {
+        setVisible(false);
+      }
+      setSelectedUser(null);
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update employee";
+      console.error("Axios Error:", errorMessage);
+    }
   };
+
   return (
     <>
-      {(props.isEditing || props.visible) && (
+      {(isEditing || visible) && (
         <div className="fixed inset-0 bg-black-opacity-30 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-lg w-4/5 max-w-xl p-6">
             <div className="flex justify-between items-center mb-4">
@@ -42,50 +97,52 @@ function EditForm(props) {
                 onClick={closeForm}
               />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium">
-                  Full Name
+                  Full Name*
                 </label>
                 <input
                   type="text"
                   id="name"
+                  {...register("name", { required: "Full name is required" })}
                   name="name"
                   placeholder="Enter full name"
-                  value={formData.name}
-                  onChange={handleChange}
                   className="border p-2 w-full rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
                 />
+                {errors.name && (
+                  <p className="text-red-500 text-sm">{errors.name.message}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium">
-                  Email Address
+                  Email Address*
                 </label>
                 <input
                   type="email"
                   id="email"
                   name="email"
+                  {...register("email", { required: "Email is required" })}
                   placeholder="Enter email address"
-                  value={formData.email}
-                  onChange={handleChange}
                   className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
+                  disabled
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm">{errors.email.message}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium">
-                  Password
+                  Password*
                 </label>
                 <input
                   type="password"
                   id="password"
                   name="password"
+                  {...register("password")}
                   placeholder="Enter password"
-                  value={formData.password}
-                  onChange={handleChange}
                   className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
+                  disabled
                 />
               </div>
               <div>
@@ -93,93 +150,126 @@ function EditForm(props) {
                   htmlFor="phoneNumber"
                   className="block text-sm font-medium"
                 >
-                  Phone Number
+                  Phone Number*
                 </label>
                 <input
                   type="text"
                   id="phoneNumber"
                   name="phoneNumber"
+                  {...register("phoneNumber", {
+                    required: "Phone Number is required",
+                  })}
                   placeholder="Enter phone number"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
                   className="border p-2 w-full rounded-md"
                 />
+                {errors.phoneNumber && (
+                  <p className="text-red-500 text-sm">
+                    {errors.phoneNumber.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="address" className="block text-sm font-medium">
-                  Address
+                  Address*
                 </label>
                 <input
                   type="text"
                   id="address"
                   name="address"
                   placeholder="Enter address"
-                  value={formData.address}
-                  onChange={handleChange}
+                  {...register("address", {
+                    required: "Address is required",
+                  })}
                   className="border p-2 w-full rounded-md"
                 />
+                {errors.address && (
+                  <p className="text-red-500 text-sm">
+                    {errors.address.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label
                   htmlFor="department"
                   className="block text-sm font-medium "
                 >
-                  Department
+                  Department*
                 </label>
                 <input
                   type="text"
                   id="department"
                   name="department"
                   placeholder="Enter department"
-                  value={formData.department}
-                  onChange={handleChange}
+                  {...register("department", {
+                    required: "Department is required",
+                  })}
                   className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
+                  disabled={userRole === "employee"}
                 />
+                {errors.department && (
+                  <p className="text-red-500 text-sm">
+                    {errors.department.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label
                   htmlFor="startingDate"
                   className="block text-sm font-medium"
                 >
-                  Starting Date
+                  Starting Date*
                 </label>
                 <input
                   type="text"
                   id="startingDate"
                   name="startingDate"
-                  value={formData.startingDate}
-                  onChange={handleChange}
+                  {...register("startingDate", {
+                    required: "Starting Date is required",
+                  })}
                   className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
+                  disabled
                 />
+                {errors.startingDate && (
+                  <p className="text-red-500 text-sm">
+                    {errors.startingDate.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="role" className="block text-sm font-medium">
                   Role
                 </label>
-                <input
-                  type="text"
+                <select
                   id="role"
                   name="role"
-                  placeholder="Enter role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={props.role === "employee"}
-                />
+                  {...register("role", {
+                    required: "Role is required",
+                  })}
+                  className="border p-2 w-full rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+                  disabled={userRole === "employee"} // Disable selection if userRole is 'employee'
+                >
+                  <option value="" disabled>
+                    Select a role
+                  </option>
+                  <option value="admin">Admin</option>
+                  <option value="employee">Employee</option>
+                </select>
+                {errors.role && (
+                  <p className="text-red-500 text-sm">{errors.role.message}</p>
+                )}
               </div>
+
               <div className="flex justify-end space-x-4">
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  className="bg-blue-600 cursor-pointer text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
-                  Edit Employee
+                  Update
                 </button>
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="bg-gray-300 px-4 py-2 rounded-md hover:bg-gray-400"
+                  className="bg-gray-300 cursor-pointer px-4 py-2 rounded-md hover:bg-gray-400"
                 >
                   Cancel
                 </button>
