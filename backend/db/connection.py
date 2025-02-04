@@ -2,7 +2,8 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os,redis
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+load_dotenv(dotenv_path)
 
 mongo_uri = os.getenv("MONGO_URI")
 redis_client = redis.StrictRedis(

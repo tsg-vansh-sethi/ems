@@ -2,5 +2,6 @@
 ./frontend/.env
 ./myenv
 
-./backend/app/.env
-./backend/app/__pycache__
+./backend/.env
+./backend/__pycache__
+./backend/venv
