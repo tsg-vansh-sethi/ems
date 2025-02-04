@@ -29,8 +29,26 @@ function AppRouter() {
 
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/dashboard" element={<AdminDashboard />} />
+      <Route
+        path="/"
+        element={
+          <PrivateRoute
+            element={<Login />}
+            requireAuth={false}
+            redirectTo="/dashboard"
+          />
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute
+            element={<AdminDashboard />}
+            requireAuth={true}
+            redirectTo="/"
+          />
+        }
+      />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

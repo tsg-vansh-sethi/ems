@@ -5,7 +5,6 @@ import { AuthContext } from "../components/AuthProvider.jsx";
 function Login() {
   const navigate = useNavigate();
   const { login, userRole, userEmail } = useContext(AuthContext);
-  console.log(userEmail);
   const [formData, setFormData] = useState({
     email: "",
     password: "",

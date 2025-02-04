@@ -24,6 +24,7 @@ function AdminDashboard() {
     dataPerPage,
     currentUser,
     isAuthenticated,
+    setUserEmail,
   } = useContext(AuthContext);
   useEffect(() => {
     window.history.pushState(null, "", window.location.href); // 3 argumnets state(session related info), title(to intend to chnage browser title by old browser) and lastly pushes the current state of browser to stack
@@ -105,7 +106,7 @@ function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/get-users?start=${start}&limit=${limit}`
+        `http://localhost:8000/get-fake-users?start=${start}&limit=${limit}`
       );
       setData([...response.data.users]);
       setStart(start + limit); // Increment start index
@@ -158,6 +159,7 @@ function AdminDashboard() {
       const response = await axios.post("http://localhost:8000/logout", {
         withCredentials: true,
       });
+      setUserEmail("");
       navigate("/");
     } catch (error) {
       throw new Error(error.response.data.detail);

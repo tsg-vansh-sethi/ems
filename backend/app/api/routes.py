@@ -3,13 +3,15 @@ from models import User,LoginRequest
 from jose import jwt
 from core import authenticateUser,getAllUsers,addEmployee,ifEmployeeExist,updateEmployee,deleteEmployee,generateJWTtoken,get_current_user,getUser,ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import EmailStr
-from db import my_collection    
+from db import my_collection ,redis_client   
 from faker import Faker
 from typing import List
 from fastapi.responses import JSONResponse
 from db import faker_collection
 from datetime import datetime
 from pymongo import ASCENDING,DESCENDING
+from core import refresh_cache
+import json
 # router =APIRouter()
 # as here all routes are of User so no need to explicitly mention, define in APIRouter()
 router =APIRouter(
@@ -17,7 +19,7 @@ router =APIRouter(
     prefix="",
 )
 fake = Faker()
-
+cache_key = "all_users"
 @router.post("/login")
 def login(user:LoginRequest, response: Response):
     
@@ -43,6 +45,7 @@ def login(user:LoginRequest, response: Response):
 @router.get("/me")
 def get_user_data(current_user: dict = Depends(get_current_user)):
     return current_user  # Return user email and role
+
 @router.post("/logout")
 def logout(response: Response,current_user:dict=Depends(get_current_user)):
     response = JSONResponse(content={"message": "Logged out successfully"})
@@ -51,12 +54,16 @@ def logout(response: Response,current_user:dict=Depends(get_current_user)):
 
 @router.get("/getAllUsers")
 def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_user):Only users with a valid JWT token can access it.
-     user_email = current_user.get("email")  # Extract email from current_user
-     if not user_email:
-        return {"error": "User email not found in current session"}
-     response=getAllUsers(user_email)
-     print(user_email)
-     return response
+    user_email = current_user.get("email")  # Extract email from current_user
+    # cache_key = "all_users"
+
+    # Check if cache exists
+    cached_users = redis_client.get(cache_key)
+    if cached_users:
+        return json.loads(cached_users)
+    response=getAllUsers(user_email)
+    redis_client.setex(cache_key, 3600, json.dumps(response)) #setex command used to set a key with an expiration time.
+    return response
 
 @router.post("/addemployee")
 def newEmployee(user:User,current_user: dict = Depends(get_current_user)):
@@ -64,6 +71,7 @@ def newEmployee(user:User,current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=409,detail="User already exits")
     response=addEmployee(user)
     if response:
+        refresh_cache(cache_key)
         return {"message": "Employee added successfully", "employee": response}
     return HTTPException(status_code=400, detail="Somthing went wrong/Bad request")
 
@@ -78,7 +86,7 @@ def getUserDetails(email:EmailStr,current_user:dict=Depends(get_current_user)):
 @router.put("/dashboard/{email}")
 def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_current_user)):
     response = updateEmployee(email, updates,current_user)
-    
+    refresh_cache(cache_key)
     # Check if the employee exists
     if response.matched_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
@@ -93,6 +101,7 @@ def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_cur
 @router.delete("/dashboard/{email}")
 def removeEmployee(email: EmailStr,current_user:dict=Depends(get_current_user)):
     response = deleteEmployee(email,current_user)
+    refresh_cache(cache_key)
     # Check if any document was deleted
     if response.deleted_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
@@ -100,7 +109,7 @@ def removeEmployee(email: EmailStr,current_user:dict=Depends(get_current_user)):
 
 
 # using fake data
-@router.get("/get-users")
+@router.get("/get-fake-users")
 def get_fake_users(start: int = 0, limit: int = 1000,current_user:dict=Depends(get_current_user)):
     email=current_user.get("email")
     users = [
@@ -117,7 +126,8 @@ def get_fake_users(start: int = 0, limit: int = 1000,current_user:dict=Depends(g
         for i in range(start, start + limit)
     ]
     my_collection.insert_many(users)
-    users_cursor = my_collection.find({"email": {"$ne": email}})
+    refresh_cache(cache_key)
+    users_cursor = my_collection.find()
     users = [{**user, "_id": str(user["_id"])} for user in users_cursor]  # Convert ObjectId to string
     return {"total_users": len(users), "users": users}
 
@@ -141,6 +151,7 @@ def delete_users(current_user:dict=Depends(get_current_user)):
     # Delete all users except the current user
      result = my_collection.delete_many({"email": {"$ne": user_email}})  # `$ne` means "not equal"
 
+     refresh_cache(cache_key)
      return {
         "message": "Users deleted successfully (except current user)",
         "deleted_count": result.deleted_count}

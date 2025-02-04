@@ -1,11 +1,18 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv
-import os
+import os,redis
 
 load_dotenv()
 
 mongo_uri = os.getenv("MONGO_URI")
-
+redis_client = redis.StrictRedis(
+    host=os.getenv("REDIS_HOST"),
+    port=int(os.getenv("REDIS_PORT")),
+    password=os.getenv("REDIS_PASSWORD"),
+    ssl=True,  # Mandatory for Azure Redis Azure Redis only supports connections over TLS/SSL by default. This means:
+    #If ssl=False, the connection will fail.
+    decode_responses=True #decode_responses=True ensures that responses are returned as strings instead of bytes.
+)
 if not mongo_uri:
     raise ValueError("MONGO_URI not found in environment variables!")
 

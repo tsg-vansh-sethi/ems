@@ -14,9 +14,11 @@ export const AuthProvider = ({ children }) => {
   const [visible, setVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState({});
   const [isEditing, setisEditing] = useState(false);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     getUserDetails();
+    setIsLoading(false);
   }, []);
 
   const login = async (email, password) => {
@@ -66,6 +68,8 @@ export const AuthProvider = ({ children }) => {
         isEditing,
         setisEditing,
         currentUser,
+        setUserEmail,
+        isLoading,
       }}
     >
       {children}
