@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState({});
   const [isEditing, setisEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   useEffect(() => {
     getUserDetails();
     setIsLoading(false);
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       await axios.post(
-        "http://localhost:8000/login",
+        `${API_BASE_URL}/login`,
         { email, password },
         {
           withCredentials: true,
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   };
   const getUserDetails = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/me", {
+      const response = await axios.get(`${API_BASE_URL}/current-user-details`, {
         withCredentials: true,
       });
       setName(response.data.name);
@@ -70,6 +70,8 @@ export const AuthProvider = ({ children }) => {
         currentUser,
         setUserEmail,
         isLoading,
+        setUserRole,
+        API_BASE_URL,
       }}
     >
       {children}

@@ -9,8 +9,9 @@ from jose import jwt,JWTError
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import EmailStr
-import os
+import os,json
 from fastapi import Cookie
+from db import redis_client
 #OAuth2PasswordBearer is a FastAPI class that extracts Bearer tokens from the Authorization header.
 # when we pass the token url: oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login') login route will return a JSON response like: {"access_token": access_token, "token_type":"bearer"}
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")  
@@ -41,6 +42,10 @@ def get_current_user(access_token: str = Cookie(None)):  # Extract token from co
         raise HTTPException(status_code=401, detail="Missing token")    
      try:
          payload=jwt.decode(access_token,SECRET_KEY,ALGORITHM)
+        # it does the following:
+        # Verifies the signature (checks if the token was signed with the correct secret key).
+        # Checks the algorithm (ensures the correct signing method was used).
+        # Validates claims (like exp, iat, nbf if present).
          exp=payload.get("expire")
          # add a check for expire time
          if datetime.now(timezone.utc).timestamp() > exp:
@@ -49,13 +54,14 @@ def get_current_user(access_token: str = Cookie(None)):  # Extract token from co
      except JWTError:
          raise HTTPException(status_code=401, detail="Invalid token")
 
+cache_key="all_users"
 def authenticateUser(user:LoginRequest)->bool:
         document=my_collection.find_one({"email":  user.email})
         if not document:
             raise HTTPException(status_code=404,detail="User not found") #user not found
         return passwordHasher.verify(user.password,document["password"])
 
-def getAllUsers(email:EmailStr):
+def getAllUsers():
     # Retrieve all documents in the "users" collection
     # users =my_collection.find()
     #above statement doesnt work for below statement .find() returns a cursor object not list so you cannot do
@@ -67,27 +73,37 @@ def getAllUsers(email:EmailStr):
         # and the ObjectId type cannot be directly represented in JSON. 
     return users
 
-def ifEmployeeExist(user:User)->bool:
-    response=my_collection.find_one({"email":  user.email})
-    if response:
-        return True
-    return False
+def ifEmployeeExist(user: User) -> bool:
+    # ✅ First, check Redis cache
+    if redis_client.hexists(cache_key, user.email):
+        return True  # Employee is already cached
+
+    # ✅ If not found in Redis, check MongoDB
+    response = my_collection.find_one({"email": user.email})
+    
+    return bool(response)  # Returns True if user exists, False otherwise
 
 def addEmployee(user:User):
     userData=user.model_dump()
     userData["password"] = hash_password(userData["password"])  # Hash the password
     response=my_collection.insert_one(userData)
-    # return True
+    # ✅ Store new user in Redis cache
+    userData["_id"]=str(response.inserted_id)
+    redis_client.hset(cache_key, user.email, json.dumps(userData))
     return {"id": str(response.inserted_id)}  # Return the inserted document ID
 
-def deleteEmployee(email,currentUser):
-    findUser=my_collection.find_one({"email":email})
-    if findUser["email"]==currentUser["email"]:
-        raise HTTPException (status_code=403,detail="Forbidden as currently logged in!!")
+def deleteEmployee(email):
+    if redis_client.hexists(cache_key, email):
+        redis_client.hdel(cache_key, email)  # ✅ O(1) operation
     response=my_collection.delete_one({"email":email})
     return response
 
 def getUser(email):
+    cached_user = redis_client.hget(cache_key, email)  # ✅ Fetches only the required user
+    if cached_user:
+        print("returning this user from redis")
+        return json.loads(cached_user)
+
     response=my_collection.find_one({"email":email}) # _id is not json serializable
     response["_id"] = str(response["_id"])
     return response
@@ -114,7 +130,9 @@ def updateEmployee(email,updates,current_user):
         }
     # Perform the update
     response = my_collection.update_one({"email": email}, {"$set": filtered_updates})
-
+    updatedEmployee=my_collection.find_one({"email":email})
+    updatedEmployee["_id"]=str(updatedEmployee["_id"])
+    redis_client.hset(cache_key, email, json.dumps(updatedEmployee))
     audit_entry={
         "updated_by":current_user["email"],
         "role":employee["role"],

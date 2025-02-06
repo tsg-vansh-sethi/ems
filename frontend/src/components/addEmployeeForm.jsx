@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 // less re-renders compared to native state validation.
 // less code , built in validation
 function AddEmployeeForm() {
-  const { setDataUpdated } = useContext(AuthContext);
+  const { setDataUpdated, API_BASE_URL } = useContext(AuthContext);
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState("");
   const [openAlert, setOpenAlert] = useState(false);
@@ -37,7 +37,7 @@ function AddEmployeeForm() {
 
   const onSubmit = async (data) => {
     try {
-      await axios.post("http://localhost:8000/addemployee", data, {
+      await axios.post(`${API_BASE_URL}/addemployee`, data, {
         withCredentials: true,
       });
       console.log(data);
@@ -142,6 +142,10 @@ function AddEmployeeForm() {
                   placeholder="Enter password"
                   {...register("password", {
                     required: "Password is required",
+                    pattern: {
+                      value: /^.{8}$/,
+                      message: "Password should be of length 8",
+                    },
                   })}
                   className="border p-2 w-full rounded-md"
                 />
@@ -163,6 +167,10 @@ function AddEmployeeForm() {
                   placeholder="Enter phone number"
                   {...register("phoneNumber", {
                     required: "Phone number is required",
+                    pattern: {
+                      value: /^\d{10,}$/,
+                      message: "Should be a valid 10 digit number",
+                    },
                   })}
                   className="border p-2 w-full rounded-md"
                 />

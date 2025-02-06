@@ -1,17 +1,14 @@
 from fastapi import APIRouter, HTTPException,Depends,Response,Query
 from models import User,LoginRequest
-from jose import jwt
 from core import authenticateUser,getAllUsers,addEmployee,ifEmployeeExist,updateEmployee,deleteEmployee,generateJWTtoken,get_current_user,getUser,ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import EmailStr
 from db import my_collection ,redis_client   
 from faker import Faker
-from typing import List
 from fastapi.responses import JSONResponse
-from db import faker_collection
 from datetime import datetime
 from pymongo import ASCENDING,DESCENDING
-from core import refresh_cache
 import json
+
 # router =APIRouter()
 # as here all routes are of User so no need to explicitly mention, define in APIRouter()
 router =APIRouter(
@@ -42,12 +39,13 @@ def login(user:LoginRequest, response: Response):
     )
     return response
 
-@router.get("/me")
+@router.get("/current-user-details")
 def get_user_data(current_user: dict = Depends(get_current_user)):
     return current_user  # Return user email and role
 
 @router.post("/logout")
 def logout(response: Response,current_user:dict=Depends(get_current_user)):
+    redis_client.delete(cache_key)
     response = JSONResponse(content={"message": "Logged out successfully"})
     response.delete_cookie("access_token")  # Clears the cookie
     return response
@@ -55,24 +53,26 @@ def logout(response: Response,current_user:dict=Depends(get_current_user)):
 @router.get("/getAllUsers")
 def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_user):Only users with a valid JWT token can access it.
     user_email = current_user.get("email")  # Extract email from current_user
-    # cache_key = "all_users"
-
-    # Check if cache exists
-    cached_users = redis_client.get(cache_key)
+   # cache approach will be
+    cached_users = redis_client.hgetall(cache_key)  # ✅ Efficient: O(n) for fetching all . we get a dictionary of objects
     if cached_users:
-        return json.loads(cached_users)
-    response=getAllUsers(user_email)
-    redis_client.setex(cache_key, 3600, json.dumps(response)) #setex command used to set a key with an expiration time.
+        print("Returning users from Redis cache.")
+        return [json.loads(user) for user in cached_users.values()] # redis jo return krta hai Python dictionary, but all values are still in string (JSON) format:
+        
+    response=getAllUsers()
+
+    for user in response:
+        redis_client.hset(cache_key, user["email"], json.dumps(user))  # ✅ O(1) for each user HSET modifies/adds only one field (the employee’s email) inside the hash.
+        redis_client.expire(cache_key,3600)
     return response
 
 @router.post("/addemployee")
-def newEmployee(user:User,current_user: dict = Depends(get_current_user)):
+def newEmployee(user:User):
     if(ifEmployeeExist(user)):
         raise HTTPException(status_code=409,detail="User already exits")
     response=addEmployee(user)
     if response:
-        refresh_cache(cache_key)
-        return {"message": "Employee added successfully", "employee": response}
+        return {"message": "Employee added successfully"}
     return HTTPException(status_code=400, detail="Somthing went wrong/Bad request")
 
 @router.get("/user/{email}")
@@ -86,7 +86,6 @@ def getUserDetails(email:EmailStr,current_user:dict=Depends(get_current_user)):
 @router.put("/dashboard/{email}")
 def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_current_user)):
     response = updateEmployee(email, updates,current_user)
-    refresh_cache(cache_key)
     # Check if the employee exists
     if response.matched_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
@@ -100,8 +99,7 @@ def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_cur
 
 @router.delete("/dashboard/{email}")
 def removeEmployee(email: EmailStr,current_user:dict=Depends(get_current_user)):
-    response = deleteEmployee(email,current_user)
-    refresh_cache(cache_key)
+    response = deleteEmployee(email)
     # Check if any document was deleted
     if response.deleted_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
@@ -126,9 +124,10 @@ def get_fake_users(start: int = 0, limit: int = 1000,current_user:dict=Depends(g
         for i in range(start, start + limit)
     ]
     my_collection.insert_many(users)
-    refresh_cache(cache_key)
     users_cursor = my_collection.find()
     users = [{**user, "_id": str(user["_id"])} for user in users_cursor]  # Convert ObjectId to string
+    for user in users:
+        redis_client.hset(cache_key, user["email"], json.dumps(user))
     return {"total_users": len(users), "users": users}
 
 @router.get("/filter-users")
@@ -144,14 +143,16 @@ def filter_users(filtertype: str, text: str,current_user:dict=Depends(get_curren
 @router.delete("/delete-users")
 def delete_users(current_user:dict=Depends(get_current_user)):
      user_email = current_user.get("email")  # Extract email from current_user
-    
+         
      if not user_email:
         return {"error": "User email not found in current session"}
-    
+    #  cached_users=redis_client.get(cache_key)
+    #  if cached_users:
+    #      cached_users.
     # Delete all users except the current user
+     redis_client.delete(cache_key)
      result = my_collection.delete_many({"email": {"$ne": user_email}})  # `$ne` means "not equal"
 
-     refresh_cache(cache_key)
      return {
         "message": "Users deleted successfully (except current user)",
         "deleted_count": result.deleted_count}

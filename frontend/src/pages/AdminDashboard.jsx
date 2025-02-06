@@ -8,7 +8,6 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../components/AuthProvider.jsx";
 import { FaArrowDownLong, FaArrowUpLong } from "react-icons/fa6";
-import Alert from "@mui/material/Alert";
 export const userContext = createContext();
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -23,15 +22,9 @@ function AdminDashboard() {
     setcurrentPage,
     dataPerPage,
     currentUser,
-    isAuthenticated,
     setUserEmail,
+    API_BASE_URL,
   } = useContext(AuthContext);
-  useEffect(() => {
-    window.history.pushState(null, "", window.location.href); // 3 argumnets state(session related info), title(to intend to chnage browser title by old browser) and lastly pushes the current state of browser to stack
-    window.onpopstate = function () {
-      window.location.reload(); // onpopstate fires when the user clicks the browser back or forward button.
-    };
-  }, []);
   const { userRole, userEmail, userName } = useContext(AuthContext);
   const [searchText, setSearchText] = useState("");
   const [data, setData] = useState([]);
@@ -73,7 +66,7 @@ function AdminDashboard() {
   const fetchSortedUsers = async (field, order) => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/sorted-users?sort_by=${field}&order=${order}`
+        `${API_BASE_URL}/sorted-users?sort_by=${field}&order=${order}`
       );
       setData(response.data.users);
     } catch (error) {}
@@ -95,10 +88,10 @@ function AdminDashboard() {
 
   const getAllUsers = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/getAllUsers", {
+      const response = await axios.get(`${API_BASE_URL}/getAllUsers`, {
         withCredentials: true,
       });
-      setData(response.data); // Increment start index
+      setData(response.data);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -106,7 +99,7 @@ function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/get-fake-users?start=${start}&limit=${limit}`
+        `${API_BASE_URL}/get-fake-users?start=${start}&limit=${limit}`
       );
       setData([...response.data.users]);
       setStart(start + limit); // Increment start index
@@ -117,12 +110,13 @@ function AdminDashboard() {
 
   const handleDelete = async (email) => {
     try {
-      await axios.delete(`http://localhost:8000/dashboard/${email}`, {
+      await axios.delete(`${API_BASE_URL}/dashboard/${email}`, {
         withCredentials: true,
       });
       setDataUpdated(true);
       setSortField(null);
       setSortOrder(null);
+      setFilterType("name");
     } catch (error) {
       console.error("Error fetching users:", error);
       // fetch(`http://127.0.0.1:8000/dashboard/${email}`, {
@@ -141,14 +135,12 @@ function AdminDashboard() {
   };
   const deleteUsers = async () => {
     try {
-      const response = await axios.delete(
-        "http://localhost:8000/delete-users",
-        {
-          withCredentials: true,
-        }
-      );
+      const response = await axios.delete(`${API_BASE_URL}/delete-users`, {
+        withCredentials: true,
+      });
       setData([]);
       setStart(0);
+      setcurrentPage(1);
       setDataUpdated(true);
     } catch (error) {
       console.error("Error deleting users:", error);
@@ -156,7 +148,7 @@ function AdminDashboard() {
   };
   const handleSignout = async () => {
     try {
-      const response = await axios.post("http://localhost:8000/logout", {
+      const response = await axios.post(`${API_BASE_URL}/logout`, {
         withCredentials: true,
       });
       setUserEmail("");
@@ -173,7 +165,7 @@ function AdminDashboard() {
     if (!searchText) getAllUsers();
     try {
       const response = await axios.get(
-        `http://localhost:8000/filter-users?filtertype=${filterType}&text=${searchText}`,
+        `${API_BASE_URL}/filter-users?filtertype=${filterType}&text=${searchText}`,
         {
           withCredentials: true,
         }

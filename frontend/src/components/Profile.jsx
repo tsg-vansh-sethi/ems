@@ -12,6 +12,7 @@ function Profile() {
     isEditing,
     setisEditing,
     isDataUpdated,
+    API_BASE_URL,
   } = useContext(AuthContext);
   useEffect(() => {
     if (userEmail) {
@@ -20,7 +21,7 @@ function Profile() {
   }, [isDataUpdated, userEmail]);
   const fetchCurrentUser = async (email) => {
     try {
-      const response = await axios.get(`http://localhost:8000/user/${email}`, {
+      const response = await axios.get(`${API_BASE_URL}/user/${email}`, {
         withCredentials: true,
       });
       setCurrentUser(response.data);

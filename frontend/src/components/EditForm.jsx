@@ -15,6 +15,7 @@ function EditForm() {
     isEditing,
     setisEditing,
     setSelectedUser,
+    API_BASE_URL,
   } = useContext(AuthContext);
   const {
     register,
@@ -56,15 +57,9 @@ function EditForm() {
     setEmailToUse(email); // Update state
   }, [setEmailToUse]);
   const onSubmit = async (data) => {
-    if (userRole == "admin") {
-      const { email, department, role, phoneNumber, address, ...otherDetails } =
-        data;
-    } else {
-      const { phoneNumber, address, ...otherDetails } = data;
-    }
     try {
       const response = await axios.put(
-        `http://localhost:8000/dashboard/${emailToUse}`,
+        `${API_BASE_URL}/dashboard/${emailToUse}`,
         data,
         {
           withCredentials: true,
@@ -84,7 +79,7 @@ function EditForm() {
       console.error("Axios Error:", errorMessage);
     }
   };
-
+  const isDisabled = currentUser?.role === "admin" && !selectedUser;
   return (
     <>
       {(isEditing || visible) && (
@@ -131,7 +126,7 @@ function EditForm() {
                   <p className="text-red-500 text-sm">{errors.email.message}</p>
                 )}
               </div>
-              <div>
+              {/* <div>
                 <label htmlFor="password" className="block text-sm font-medium">
                   Password*
                 </label>
@@ -144,7 +139,7 @@ function EditForm() {
                   className="border p-2 w-full rounded-md  disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
                   disabled
                 />
-              </div>
+              </div> */}
               <div>
                 <label
                   htmlFor="phoneNumber"
@@ -158,6 +153,10 @@ function EditForm() {
                   name="phoneNumber"
                   {...register("phoneNumber", {
                     required: "Phone Number is required",
+                    pattern: {
+                      value: /^\d{10,}$/,
+                      message: "Should be a valid 10 digit number",
+                    },
                   })}
                   placeholder="Enter phone number"
                   className="border p-2 w-full rounded-md"
@@ -246,7 +245,7 @@ function EditForm() {
                     required: "Role is required",
                   })}
                   className="border p-2 w-full rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                  disabled={userRole === "employee"} // Disable selection if userRole is 'employee'
+                  disabled={isDisabled} // Disable selection if userRole is 'employee'
                 >
                   <option value="" disabled>
                     Select a role
