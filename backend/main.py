@@ -17,12 +17,11 @@ app=FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Allow React app to make requests
+    allow_origins=["*"],  # Allow React app to make requests
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods
     allow_headers=["*"],  # Allows all headers
 )
-
 
 # Include the user API router
 # app.include_router is This is telling FastAPI to include the routes from the user_router into the main FastAPI application (app). 

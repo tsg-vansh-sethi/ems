@@ -78,6 +78,9 @@ function AdminDashboard() {
   useEffect(() => {
     // deleteUsers();
     getAllUsers();
+    // best approach is to update the previous data rather than re-rendering again like we did here
+    // which will say us one db call
+    // like one we are making add employee call in data()  we will have previous data
     setDataUpdated(false);
   }, [isDataUpdated]);
   // useEffect(() => {
