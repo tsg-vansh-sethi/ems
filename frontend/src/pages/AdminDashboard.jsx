@@ -189,12 +189,14 @@ function AdminDashboard() {
           <td className="p-2">{item.phoneNumber}</td>
           <td className="p-2">{item.address}</td>
           <td className="p-2">{item.department}</td>
-          <td className="p-2">{item.role}</td>
-          <td className="p-2">{item.startingDate}</td>
+          {userRole != "employee" && <td className="p-2">{item.role}</td>}
+          {userRole != "employee" && (
+            <td className="p-2">{item.startingDate}</td>
+          )}
           {userRole === "admin" && (
             <td className="p-2">
               <div className="flex flex-col md:flex-row gap-2">
-                {userEmail != item.email && (
+                {userEmail != item.email && item.role != "admin" && (
                   <button
                     onClick={() => handleEditClick(item)}
                     className="bg-blue-600 cursor-pointer text-white px-3 py-1 rounded-md hover:bg-blue-700 text-xs md:text-sm"
@@ -202,7 +204,7 @@ function AdminDashboard() {
                     Edit
                   </button>
                 )}
-                {userEmail != item.email && (
+                {userEmail != item.email && item.role != "admin" && (
                   <button
                     className="bg-red-600 cursor-pointer text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs md:text-sm"
                     onClick={() => handleDelete(item.email)}
@@ -335,20 +337,25 @@ function AdminDashboard() {
                   Department
                   {checkSortOrder("department")}
                 </th>
-                <th
-                  className="p-2"
-                  style={{ cursor: "pointer" }}
-                  onClick={handleSort}
-                >
-                  Role{checkSortOrder("role")}
-                </th>
-                <th
-                  className="p-2"
-                  style={{ cursor: "pointer" }}
-                  onClick={handleSort}
-                >
-                  Join Date {checkSortOrder("startingDate")}
-                </th>
+
+                {userRole != "employee" && (
+                  <th
+                    className="p-2"
+                    style={{ cursor: "pointer" }}
+                    onClick={handleSort}
+                  >
+                    Role{checkSortOrder("role")}
+                  </th>
+                )}
+                {userRole != "employee" && (
+                  <th
+                    className="p-2"
+                    style={{ cursor: "pointer" }}
+                    onClick={handleSort}
+                  >
+                    Join Date {checkSortOrder("startingDate")}
+                  </th>
+                )}
                 {userRole === "admin" && <th className="p-2">Actions</th>}
               </tr>
             </thead>

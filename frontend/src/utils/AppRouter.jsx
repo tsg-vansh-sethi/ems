@@ -16,7 +16,7 @@ function AppRouter() {
       (response) => response,
       (error) => {
         if (error.response && error.response.status === 401) {
-          navigate("/");
+          navigate("/", { replace: true });
         }
         return Promise.reject(error);
       }

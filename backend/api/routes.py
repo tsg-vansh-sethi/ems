@@ -67,7 +67,9 @@ def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_
     return response
 
 @router.post("/addemployee")
-def newEmployee(user:User):
+def newEmployee(user:User,current_user:dict=Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can add employees")
     if(ifEmployeeExist(user)):
         raise HTTPException(status_code=409,detail="User already exits")
     response=addEmployee(user)
@@ -101,6 +103,8 @@ def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_cur
 def removeEmployee(email: EmailStr,current_user:dict=Depends(get_current_user)):
     response = deleteEmployee(email)
     # Check if any document was deleted
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete employees")
     if response.deleted_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
     return {"message": "Employee deleted successfully"}
@@ -178,7 +182,10 @@ def get_sorted_users(
 # Using collation, we can ignore case and sort strings in a way that feels natural.
 # "strength": 1	Ignores accents + case (e.g., "café" == "CAFE").
 # "strength": 2	Ignores case but considers accents (e.g., "café" != "CAFE").
-
+# db["users"].createIndex(
+#   { address: 1 },
+#   { collation: { locale: "en", strength: 2 } }
+# )
     # if order == "asc":
     #     users_cursor = faker_collection.find().sort(sort_by, ASCENDING).collation({"locale": "en", "strength": 1})
     # elif order == "desc":

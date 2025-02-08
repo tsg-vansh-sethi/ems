@@ -26,6 +26,7 @@ function EditForm() {
     defaultValues: selectedUser || currentUser, // Set initial values
   });
   // const [formData, setFormData] = useState(selectedUser || currentUser);
+  const isEditingOwnProfile = !selectedUser;
   const closeForm = () => {
     if (setisEditing) {
       setisEditing(false);
@@ -35,6 +36,7 @@ function EditForm() {
     }
     setSelectedUser(null);
   };
+
   const [emailToUse, setEmailToUse] = useState("");
   // const handleSubmit = async (e) => {
   //   console.log(formData);
@@ -79,7 +81,11 @@ function EditForm() {
       console.error("Axios Error:", errorMessage);
     }
   };
-  const isDisabled = currentUser?.role === "admin" && !selectedUser;
+  const isDisabled =
+    currentUser?.role === "employee" || // Employees cannot change any roles
+    isEditingOwnProfile ||
+    selectedUser?.role === currentUser?.role; // Admins cannot edit other admins
+
   return (
     <>
       {(isEditing || visible) && (
