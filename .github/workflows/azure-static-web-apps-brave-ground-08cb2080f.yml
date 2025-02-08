@@ -25,15 +25,18 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 22.13.0 # Change this to the required Node.js version
-          cache: 'npm' # Optional: Cache dependencies
+          cache: 'npm' # Enable npm caching
+          cache-dependency-path: frontend/package-lock.json # Ensure cache uses the correct lock file
 
       - name: Install Dependencies
-        working-directory: frontend
-        run: npm install
+        run: |
+          cd frontend
+          npm install
 
       - name: Build Application
-        working-directory: frontend
-        run: npm run build
+        run: |
+          cd frontend
+          npm run build
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
