@@ -8,10 +8,11 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
+  workflow_dispatch: # Allows manual triggering from GitHub Actions
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     steps:
@@ -24,19 +25,29 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 22.13.0 # Change this to the required Node.js version
+          cache: 'npm' # Optional: Cache dependencies
 
-      - name: Build And Deploy
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm install --package-lock-only || npm install
+
+      - name: Build Application
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Deploy to Azure Static Web Apps
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BRAVE_GROUND_08CB2080F }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for GitHub integrations (i.e. PR comments)
           action: "upload"
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
-          app_location: "./frontend" # App source code path
+          app_location: "./frontend/build" # Point to the manually built output directory
           api_location: "" # Api source code path - optional
-          output_location: "build" # Built app content directory - optional
+          output_location: "" # No need for this since we're uploading a prebuilt app
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
