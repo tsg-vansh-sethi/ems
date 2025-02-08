@@ -28,14 +28,12 @@ jobs:
           cache: 'npm' # Optional: Cache dependencies
 
       - name: Install Dependencies
-        run: |
-          cd frontend
-          npm install --package-lock-only || npm install
+        working-directory: frontend
+        run: npm install
 
       - name: Build Application
-        run: |
-          cd frontend
-          npm run build
+        working-directory: frontend
+        run: npm run build
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
