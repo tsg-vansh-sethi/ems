@@ -37,7 +37,8 @@ jobs:
         run: |
           cd frontend
           npm run build
-
+           ls -la build || ls -la dist  # Check if build output exists
+  
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
