@@ -151,9 +151,9 @@ def updateEmployee(email,updates,current_user):
     redis_client.hset(cache_key, email, json.dumps(updatedEmployee))
     audit_entry={
         "updated_by":current_user["email"],
-        "role":employee["role"],
+        "role":current_user["role"],
         "updated_whom":employee["email"],
-        "updated_when":datetime.now(),
+        "updated_when":datetime.now(), 
         "changes":changes
     }
     audit_collection.insert_one(audit_entry)
