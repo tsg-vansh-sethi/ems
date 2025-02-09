@@ -83,19 +83,35 @@ def ifEmployeeExist(user: User) -> bool:
     
     return bool(response)  # Returns True if user exists, False otherwise
 
-def addEmployee(user:User):
+def addEmployee(user:User,currentUser):
     userData=user.model_dump()
     userData["password"] = hash_password(userData["password"])  # Hash the password
     response=my_collection.insert_one(userData)
     # ✅ Store new user in Redis cache
     userData["_id"]=str(response.inserted_id)
+    audit_entry={
+        "added_by":currentUser["email"],
+        "role":currentUser["role"],
+        "added_whom":userData,
+        "added_when":datetime.now(),
+    }
     redis_client.hset(cache_key, user.email, json.dumps(userData))
-    return {"id": str(response.inserted_id)}  # Return the inserted document ID
+    audit_collection.insert_one(audit_entry)
+    return {"id": str(response.inserted_id)}  # Return the inserted document ID 
 
-def deleteEmployee(email):
+
+
+def deleteEmployee(email,currentUser):
     if redis_client.hexists(cache_key, email):
         redis_client.hdel(cache_key, email)  # ✅ O(1) operation
     response=my_collection.delete_one({"email":email})
+    audit_entry={
+        "deleted_by":currentUser["email"],
+        "role":currentUser["role"],
+        "deleted_whom":email,
+        "deleted_when":datetime.now(),
+    }
+    audit_collection.insert_one(audit_entry)
     return response
 
 def getUser(email):

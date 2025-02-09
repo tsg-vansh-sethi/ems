@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException,Depends,Response,Query
 from models import User,LoginRequest
 from core import authenticateUser,getAllUsers,addEmployee,ifEmployeeExist,updateEmployee,deleteEmployee,generateJWTtoken,get_current_user,getUser,ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import EmailStr
-from db import my_collection ,redis_client   
+from db import my_collection ,redis_client,audit_collection   
 from faker import Faker
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -58,7 +58,9 @@ def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_
     if cached_users:
         print("Returning users from Redis cache.")
         return [json.loads(user) for user in cached_users.values()] # redis jo return krta hai Python dictionary, but all values are still in string (JSON) format:
-        
+    
+    # Redis hashes (HSET, HGETALL) do not maintain the order of keys as they are stored in an unordered hash table internally. When retrieving data using HGETALL, Redis returns the data in arbitrary order.
+    #Hash tables are inherently unordered because they store data based on hashing algorithms.
     response=getAllUsers()
 
     for user in response:
@@ -68,11 +70,11 @@ def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_
 
 @router.post("/addemployee")
 def newEmployee(user:User,current_user:dict=Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Only admins can add employees")
     if(ifEmployeeExist(user)):
         raise HTTPException(status_code=409,detail="User already exits")
-    response=addEmployee(user)
+    response=addEmployee(user,current_user)
     if response:
         return {"message": "Employee added successfully"}
     return HTTPException(status_code=400, detail="Somthing went wrong/Bad request")
@@ -101,9 +103,10 @@ def editEmployee(email: EmailStr, updates:dict,current_user:dict=Depends(get_cur
 
 @router.delete("/dashboard/{email}")
 def removeEmployee(email: EmailStr,current_user:dict=Depends(get_current_user)):
-    response = deleteEmployee(email)
+    response = deleteEmployee(email,current_user)
+    print(current_user)
     # Check if any document was deleted
-    if current_user.role != "admin":
+    if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Only admins can delete employees")
     if response.deleted_count == 0:
         raise HTTPException(status_code=409, detail="Employee not found")
@@ -132,6 +135,13 @@ def get_fake_users(start: int = 0, limit: int = 1000,current_user:dict=Depends(g
     users = [{**user, "_id": str(user["_id"])} for user in users_cursor]  # Convert ObjectId to string
     for user in users:
         redis_client.hset(cache_key, user["email"], json.dumps(user))
+    audit_entry={
+        "added_by":current_user["email"],
+        "role":current_user["role"],
+        "added":"Added fake users",
+        "added_when":datetime.now(),
+    }
+    audit_collection.insert_one(audit_entry)
     return {"total_users": len(users), "users": users}
 
 @router.get("/filter-users")
@@ -156,7 +166,13 @@ def delete_users(current_user:dict=Depends(get_current_user)):
     # Delete all users except the current user
      redis_client.delete(cache_key)
      result = my_collection.delete_many({"email": {"$ne": user_email}})  # `$ne` means "not equal"
-
+     audit_entry={
+        "deleted_by":current_user["email"],
+        "role":current_user["role"],
+        "deleted":"Deleted all fake users",
+        "deleted_when":datetime.now(),
+    }
+     audit_collection.insert_one(audit_entry)
      return {
         "message": "Users deleted successfully (except current user)",
         "deleted_count": result.deleted_count}
