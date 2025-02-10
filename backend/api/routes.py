@@ -62,7 +62,7 @@ def getUsers(current_user:dict=Depends(get_current_user)): #Depends(get_current_
     # Redis hashes (HSET, HGETALL) do not maintain the order of keys as they are stored in an unordered hash table internally. When retrieving data using HGETALL, Redis returns the data in arbitrary order.
     #Hash tables are inherently unordered because they store data based on hashing algorithms.
     response=getAllUsers()
-
+    #now
     for user in response:
         redis_client.hset(cache_key, user["email"], json.dumps(user))  # ✅ O(1) for each user HSET modifies/adds only one field (the employee’s email) inside the hash.
         redis_client.expire(cache_key,3600)
