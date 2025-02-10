@@ -47,7 +47,15 @@ def get_user_data(current_user: dict = Depends(get_current_user)):
 def logout(response: Response,current_user:dict=Depends(get_current_user)):
     redis_client.delete(cache_key)
     response = JSONResponse(content={"message": "Logged out successfully"})
-    response.delete_cookie("access_token")  # Clears the cookie
+    response.set_cookie(
+        key="access_token",
+        value="",
+        httponly=True,  # Prevent JavaScript access (XSS protection)
+        secure=True,  # Ensures HTTPS-only transmission (important for production)
+         samesite="None",  # Helps prevent CSRF attacks
+         path="/",
+        max_age=0  # Cookie expiry (matches token expiry)
+    )
     return response
 
 @router.get("/getAllUsers")
