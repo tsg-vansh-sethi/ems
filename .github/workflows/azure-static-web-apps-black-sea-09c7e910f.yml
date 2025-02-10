@@ -23,7 +23,7 @@ jobs:
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_OCEAN_07B5BC80F }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BLACK_SEA_09C7E910F }}
           repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
           action: "upload"
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
@@ -31,8 +31,8 @@ jobs:
           app_location: "./frontend" # App source code path
           api_location: "" # Api source code path - optional
           output_location: "dist" # Built app content directory - optional
-        env: 
-          VITE_API_BASE_URL: https://tsg-2002-vansh-fastapi-chgcbee3htevcgdh.canadacentral-01.azurewebsites.net
+        env:
+          VITE_API_BASE_URL: https://tsg-vansh-2002-fastapi-escwataya3cacvd0.eastus2-01.azurewebsites.net
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
@@ -44,5 +44,5 @@ jobs:
         id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_OCEAN_07B5BC80F }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BLACK_SEA_09C7E910F }}
           action: "close"
